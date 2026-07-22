@@ -75,7 +75,7 @@ Construir un dispositivo que, colocado sobre un **maniquí de RCP de niño**, de
 
 ## FASE 2 — Sensores por separado (simulación primero)
 
-- [ ] **T2.1** — Módulo `sensor_ecg` + `ads1115`: leer "hay señal / no hay señal" (simulado con potenciómetro) 🤖🧑
+- [x] **T2.1** — Módulo `sensor_ecg` + `ads1115`: leer "hay señal / no hay señal" (simulado con potenciómetro) 🤖🧑
 - [ ] **T2.2** — Módulo `sensor_ppg`: leer "hay pulso / no hay pulso" (simulado) 🤖🧑
 - [ ] **T2.3** — Módulo `sensor_fuerza` (HX711): leer fuerza en N (simulado) 🤖🧑
 - [ ] **T2.4** — Módulo `sensor_profundidad` (VL53L0X): leer profundidad en cm (simulado) 🤖🧑
