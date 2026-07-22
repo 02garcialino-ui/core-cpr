@@ -70,7 +70,7 @@ Construir un dispositivo que, colocado sobre un **maniquí de RCP de niño**, de
 - [x] **T1.1** — Crear una cuenta gratis en Wokwi y abrir un proyecto de ESP32 🧑
 - [x] **T1.2** — Primer "hola mundo": hacer parpadear un LED con la ESP32 (en Wokwi) 🤝
 - [x] **T1.3** — Entender la consola serial (ver mensajes de texto) 🤝
-- [ ] **T1.4** — Crear el archivo `config.h` y el módulo `logger` (base de todo) 🤖
+- [x] **T1.4** — Crear el archivo `config.h` y el módulo `logger` (base de todo) 🤖
 - [ ] **T1.5** — (Cuando llegue) instalar el entorno para la ESP32 real 🧑
 
 ## FASE 2 — Sensores por separado (simulación primero)
