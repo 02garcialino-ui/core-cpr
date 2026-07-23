@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 1 | ESP32 | DevKitC (WROOM-32) | Controlador principal |
 | 1 | Buffer 74AHCT125 | — | Adapta señales 3.3V→5V limpias para el driver |
-| 1 | Lote de resistencias | 220Ω, 330Ω, 1kΩ, 10kΩ | Pull-ups/downs y polarización |
+| 1 | Lote de resistencias | 220Ω, 330Ω, 1kΩ, 10kΩ, 🔴 1MΩ, 🔴 10MΩ | Pull-ups/downs, polarización y circuito de inyección de señal ECG simulada (T3.3) |
 
 ## B. Sensores
 | Cant. | Componente | Especificación | Para qué |
@@ -70,7 +70,7 @@
 |---|---|---|
 | — | Jumpers + cable blindado | Conexiones (blindado para señales de sensores) |
 | — | Protoboard y/o PCB | Prototipar y luego soldar |
-| — | Capacitores de desacople (100nF, 10µF) | Filtrar ruido en sensores |
+| — | Capacitores de desacople (100nF, 10µF, 🔴 1µF) | Filtrar ruido en sensores; el 1µF es para el filtro RC de la señal ECG simulada (T3.3) |
 | — | Cautín, estaño, flux, termorretráctil | Armado final |
 
 ## H. Equipo de prueba (no van dentro del dispositivo)

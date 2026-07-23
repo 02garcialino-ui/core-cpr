@@ -44,7 +44,7 @@ Construir un dispositivo que, colocado sobre un **maniquí de RCP de niño**, de
 |---|---|---|
 | 0 | Preparación y organización | 🔜 En curso |
 | 1 | Entorno + primeros pasos | ⬜ |
-| 2 | Sensores por separado | ⬜ |
+| 2 | Sensores por separado | ✅ |
 | 3 | Simulador de ECG (Arduino) | ⬜ |
 | 4 | Lógica de decisión (FSM, sin motor) | ⬜ |
 | 5 | Motor por separado | ⬜ |
@@ -76,16 +76,16 @@ Construir un dispositivo que, colocado sobre un **maniquí de RCP de niño**, de
 ## FASE 2 — Sensores por separado (simulación primero)
 
 - [x] **T2.1** — Módulo `sensor_ecg` + `ads1115`: leer "hay señal / no hay señal" (simulado con potenciómetro) 🤖🧑
-- [ ] **T2.2** — Módulo `sensor_ppg`: leer "hay pulso / no hay pulso" (simulado) 🤖🧑
-- [ ] **T2.3** — Módulo `sensor_fuerza` (HX711): leer fuerza en N (simulado) 🤖🧑
-- [ ] **T2.4** — Módulo `sensor_profundidad` (VL53L0X): leer profundidad en cm (simulado) 🤖🧑
-- [ ] **T2.5** — Verificar que cada sensor imprime sus valores en la consola con logs 🤝
+- [x] **T2.2** — Módulo `sensor_ppg`: leer "hay pulso / no hay pulso" (simulado) 🤖🧑
+- [x] **T2.3** — Módulo `sensor_fuerza` (HX711): leer fuerza en N (simulado) 🤖🧑
+- [x] **T2.4** — Módulo `sensor_profundidad` (VL53L0X): leer profundidad en cm (simulado) 🤖🧑
+- [x] **T2.5** — Verificar que cada sensor imprime sus valores en la consola con logs 🤝
 
 ## FASE 3 — Simulador de ECG (Arduino)
 
-- [ ] **T3.1** — Programar el Arduino para generar una señal tipo ECG 🤖🧑
-- [ ] **T3.2** — Agregar un botón/switch para cortar y reanudar la señal a mano 🤝
-- [ ] **T3.3** — (Punto F) Definir cómo se inyecta esa señal en el AD8232 y qué componentes chicos hacen falta 🤖
+- [x] **T3.1** — Programar el Arduino para generar una señal tipo ECG 🤖🧑
+- [x] **T3.2** — Agregar un botón/switch para cortar y reanudar la señal a mano 🤝
+- [x] **T3.3** — (Punto F) Definir cómo se inyecta esa señal en el AD8232 y qué componentes chicos hacen falta 🤖
 - [ ] **T3.4** — Probar que la ESP32 detecta el corte y la reanudación 🤝
 
 ## FASE 4 — Lógica de decisión (FSM, sin motor todavía)
