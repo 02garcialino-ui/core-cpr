@@ -9,7 +9,12 @@
 
 Construir un dispositivo que, colocado sobre un **maniquí de RCP de niño**, detecte un paro cardíaco (mediante ECG + PPG) y administre **compresiones torácicas mecánicas** según el estándar AHA pediátrico: **100–120 compresiones por minuto, ~5 cm de profundidad, ~250 N máximo de fuerza**.
 
-**Cómo se prueba:** un **Arduino** genera una señal de ECG simulada. Con señal = "vivo" (no comprime). Se corta la señal = "paro" (comprime). Se reanuda la señal = se detiene.
+**Cómo se prueba:** el **PPG (pulso)** es quien decide si hay actividad vital, tanto para empezar como para detener las compresiones (así se cubre el caso clínico de Actividad Eléctrica Sin Pulso, AESP: el corazón puede tener actividad eléctrica sin bombear sangre). El ECG se sigue registrando en los logs, pero no decide.
+
+En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG simulada, con un switch para cortarla/reanudarla; y el sensor PPG se controla poniendo/retirando un dedo real sobre él (un sensor óptico de pulso no se puede simular con un potenciómetro, necesita tejido con sangre real). Tres escenarios:
+- **Normal**: ECG activo + dedo puesto → vivo, no comprime.
+- **Paro clásico**: ECG cortado + dedo retirado → comprime.
+- **AESP (caso especial)**: ECG activo + dedo retirado → comprime igual, porque manda el PPG.
 
 ---
 
@@ -86,14 +91,14 @@ Construir un dispositivo que, colocado sobre un **maniquí de RCP de niño**, de
 - [x] **T3.1** — Programar el Arduino para generar una señal tipo ECG 🤖🧑
 - [x] **T3.2** — Agregar un botón/switch para cortar y reanudar la señal a mano 🤝
 - [x] **T3.3** — (Punto F) Definir cómo se inyecta esa señal en el AD8232 y qué componentes chicos hacen falta 🤖
-- [ ] **T3.4** — Probar que la ESP32 detecta el corte y la reanudación 🤝
+- [~] **T3.4** — Probar que la ESP32 detecta el corte y la reanudación 🤝 · _En stand-by: Wokwi (editor web) no permite programar dos placas distintas en un mismo proyecto. Se prueba con el Arduino y la ESP32 físicos (ver T9.4). No bloquea el avance a Fase 4._
 
 ## FASE 4 — Lógica de decisión (FSM, sin motor todavía)
 
-- [ ] **T4.1** — Diseñar la máquina de estados (dibujarla juntos) 🤖
-- [ ] **T4.2** — Programar `logica_fsm`: decide "vivo / paro" cruzando ECG + PPG 🤖
-- [ ] **T4.3** — (Punto A) Al elegir "modo niño", arrancar el diagnóstico automáticamente 🤖
-- [ ] **T4.4** — (Punto C) Reevaluación cada 2 min (pausa 5 s) + parada inmediata si vuelve la vida 🤖
+- [x] **T4.1** — Diseñar la máquina de estados (dibujarla juntos) 🤖
+- [x] **T4.2** — Programar `logica_fsm`: decide "vivo / paro" cruzando ECG + PPG 🤖 · _El PPG decide siempre (inicio y fin), el ECG solo se registra en logs (caso AESP). Ver `docs/diagramas/T4.1-fsm.md`._
+- [x] **T4.3** — (Punto A) Al elegir "modo niño", arrancar el diagnóstico automáticamente 🤖 · _Selección de modo con switch físico (GND = niño), no con pantalla — no depende de la Fase 6. Modo embarazada descartado (el NEMA 23 no tiene fuerza para comprimir un adulto/embarazada); queda como nota a futuro. Modo adulto: no funcional, no hace ninguna lectura._
+- [x] **T4.4** — (Punto C) Reevaluación cada 2 min (pausa 5 s) + parada inmediata si vuelve la vida 🤖 · _Probado en Wokwi con 15 s en vez de 2 min (`MODO_SIMULACION`); pasa a 2 min automático con hardware real. Durante COMPRIMIENDO no se lee ni se muestra ECG/PPG._
 - [ ] **T4.5** — Salida de prueba: encender un LED en vez del motor (para ver la decisión) 🤝
 
 ## FASE 5 — Motor por separado
@@ -163,8 +168,6 @@ Construir un dispositivo que, colocado sobre un **maniquí de RCP de niño**, de
 
 > Tareas que no se pudieron hacer en ningún simulador y esperan una alternativa.
 
-*(Vacía por ahora.)*
-
 | Tarea | Motivo | Plan para resolverla |
 |---|---|---|
-| — | — | — |
+| T3.4 | Wokwi (editor web) no soporta programar dos placas distintas en un mismo proyecto | Probar con el Arduino y la ESP32 físicos cuando lleguen los componentes (ver T9.4) |

@@ -19,6 +19,13 @@
 // Los pines CLK, CMD, D0-D3 son de la memoria flash: NO se usan.
 #define PIN_LED_ESTADO   2       // LED de prueba / indicador de actividad
 
+// ---- Selector de modo (T4.3) ----
+// Switch fisico de 2 posiciones. GND (con INPUT_PULLUP) = modo NINO.
+// Modo ADULTO: no funcional (el NEMA 23 no tiene fuerza para comprimir
+// un adulto). Modo embarazada: descartado por la misma razon, queda
+// solo como nota a futuro (ver PLAN-PROYECTO.md).
+#define PIN_SELECTOR_MODO  19
+
 // ---- ECG (T2.1) ----
 // GPIO 34 es de SOLO ENTRADA y tiene ADC. Ideal para un potenciometro.
 // En simulacion aqui va el potenciometro; con hardware real se usa el ADS1115.
@@ -68,6 +75,17 @@
 // que es mucho mayor). Se elige asi para tener buena resolucion alrededor
 // del limite de 5 cm. OJO: PROVISIONAL, se recalibra con el sensor real (T9.4).
 #define PROFUNDIDAD_SIM_MAX_CM 10.0
+
+// ---- Tiempos de la FSM (T4.4) ----
+// En MODO_SIMULACION se usa un tiempo de compresion corto (15 s) para
+// poder probar en Wokwi sin esperar los 2 minutos reales. Con hardware
+// real (MODO_SIMULACION false) se usan los 2 minutos del estandar AHA.
+#if MODO_SIMULACION
+  #define DURACION_COMPRESION_MS   (15UL * 1000UL)
+#else
+  #define DURACION_COMPRESION_MS   (2UL * 60UL * 1000UL)
+#endif
+#define DURACION_REEVALUACION_MS  (5UL * 1000UL)   // pausa para revisar (AHA limita a ~10s)
 
 // ---- Límites clínicos (AHA - modo niño) ----
 // Fuente: estándar AHA pediátrico, según se definió en T0.1.

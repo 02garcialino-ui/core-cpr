@@ -1,6 +1,7 @@
 // =====================================================
 //  Core CPR - Firmware principal (ESP32)
-//  Estado: Fase 2 - T2.4 sensor de profundidad (simulado)
+//  Estado: Fase 4 - T4.4 FSM con reevaluacion (COMPRIMIENDO/REEVALUANDO)
+//  (todavia sin salida de motor ni LED de compresion, ver T4.5)
 // =====================================================
 
 #include "config.h"
@@ -9,6 +10,8 @@
 #include "sensor_ppg.h"
 #include "sensor_fuerza.h"
 #include "sensor_profundidad.h"
+#include "logica_fsm.h"
+#include "selector_modo.h"
 
 // Guardamos el estado anterior para avisar SOLO cuando cambia.
 // Si no, la consola se llena de mensajes repetidos y no se ve nada.
@@ -17,6 +20,8 @@ bool habiaPulso = false;
 bool habiaExcesoFuerza = false;
 bool habiaExcesoProfundidad = false;
 bool primeraVuelta = true;
+ModoPaciente modoAnterior = MODO_ADULTO;
+bool primerModo = true;
 
 void setup() {
   loggerIniciar();
@@ -34,41 +39,70 @@ void setup() {
     logMsg(LOG_WARN, "MAIN", "MODO_SIMULACION activo: los datos NO son de sensores reales");
   }
 
+  selectorModoIniciar();
   ecgIniciar();
   ppgIniciar();
   fuerzaIniciar();
   profundidadIniciar();
+  fsmIniciar();
   logMsg(LOG_INFO, "MAIN", "Gira los potenciometros o ajusta el HX711 para simular");
 }
 
 void loop() {
-  bool haySenalEcg = ecgHaySenal();
-  bool hayPulso = ppgHayPulso();
+  ModoPaciente modoActual = selectorModoLeer();
+
+  if (primerModo || modoActual != modoAnterior) {
+    if (modoActual == MODO_NINO) {
+      logMsg(LOG_INFO, "MAIN", ">>> MODO NINO seleccionado: iniciando diagnostico");
+    } else {
+      logMsg(LOG_WARN, "MAIN", ">>> MODO ADULTO seleccionado: Modo no disponible (mensaje de pantalla, Fase 6)");
+    }
+    modoAnterior = modoActual;
+    primerModo = false;
+  }
+
+  if (modoActual == MODO_ADULTO) {
+    delay(500);
+    return;   // modo no funcional: no se lee ningun sensor ni corre la FSM
+  }
+
+  fsmActualizar();
+
+  // Mientras esta COMPRIMIENDO no se lee ni se muestra ECG/PPG: el
+  // movimiento ensucia esas lecturas (ver docs/diagramas/T4.1-fsm.md).
+  // Fuerza y profundidad son sensores de control, no de diagnostico:
+  // esos si se leen siempre, incluso durante la compresion.
+  bool comprimiendo = (fsmEstadoActual() == FSM_COMPRIMIENDO);
+
   bool excedeFuerza = fuerzaExcedeLimite();
   bool excedeProfundidad = profundidadExcedeLimite();
-
-  // Cada LED es la senal visual de su propio sensor.
-  digitalWrite(PIN_LED_ESTADO, haySenalEcg ? HIGH : LOW);
-  digitalWrite(PIN_LED_PPG, hayPulso ? HIGH : LOW);
   digitalWrite(PIN_LED_FUERZA, excedeFuerza ? HIGH : LOW);
   digitalWrite(PIN_LED_PROFUNDIDAD, excedeProfundidad ? HIGH : LOW);
 
-  if (primeraVuelta || haySenalEcg != habiaSenalEcg) {
-    if (haySenalEcg) {
-      logMsg(LOG_INFO, "MAIN", ">>> HAY SENAL CARDIACA (paciente con actividad)");
-    } else {
-      logMsg(LOG_WARN, "MAIN", ">>> SIN SENAL CARDIACA (posible paro)");
-    }
-    habiaSenalEcg = haySenalEcg;
-  }
+  if (!comprimiendo) {
+    bool haySenalEcg = ecgHaySenal();
+    bool hayPulso = ppgHayPulso();
 
-  if (primeraVuelta || hayPulso != habiaPulso) {
-    if (hayPulso) {
-      logMsg(LOG_INFO, "MAIN", ">>> HAY PULSO (paciente con actividad)");
-    } else {
-      logMsg(LOG_WARN, "MAIN", ">>> SIN PULSO (posible paro)");
+    digitalWrite(PIN_LED_ESTADO, haySenalEcg ? HIGH : LOW);
+    digitalWrite(PIN_LED_PPG, hayPulso ? HIGH : LOW);
+
+    if (primeraVuelta || haySenalEcg != habiaSenalEcg) {
+      if (haySenalEcg) {
+        logMsg(LOG_INFO, "MAIN", ">>> HAY SENAL CARDIACA (paciente con actividad)");
+      } else {
+        logMsg(LOG_WARN, "MAIN", ">>> SIN SENAL CARDIACA (posible paro)");
+      }
+      habiaSenalEcg = haySenalEcg;
     }
-    habiaPulso = hayPulso;
+
+    if (primeraVuelta || hayPulso != habiaPulso) {
+      if (hayPulso) {
+        logMsg(LOG_INFO, "MAIN", ">>> HAY PULSO (paciente con actividad)");
+      } else {
+        logMsg(LOG_WARN, "MAIN", ">>> SIN PULSO (posible paro)");
+      }
+      habiaPulso = hayPulso;
+    }
   }
 
   if (primeraVuelta || excedeFuerza != habiaExcesoFuerza) {
