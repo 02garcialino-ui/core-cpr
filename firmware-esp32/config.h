@@ -19,6 +19,11 @@
 // Los pines CLK, CMD, D0-D3 son de la memoria flash: NO se usan.
 #define PIN_LED_ESTADO   2       // LED de prueba / indicador de actividad
 
+// ---- Salida de prueba de compresion (T4.5) ----
+// Reemplaza al motor, que todavia no existe (Fase 5). Prendido =
+// estado COMPRIMIENDO de la FSM, apagado = MONITOREANDO/REEVALUANDO.
+#define PIN_LED_COMPRESION  23
+
 // ---- Selector de modo (T4.3) ----
 // Switch fisico de 2 posiciones. GND (con INPUT_PULLUP) = modo NINO.
 // Modo ADULTO: no funcional (el NEMA 23 no tiene fuerza para comprimir

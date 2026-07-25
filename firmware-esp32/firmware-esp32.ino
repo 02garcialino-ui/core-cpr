@@ -1,7 +1,7 @@
 // =====================================================
 //  Core CPR - Firmware principal (ESP32)
-//  Estado: Fase 4 - T4.4 FSM con reevaluacion (COMPRIMIENDO/REEVALUANDO)
-//  (todavia sin salida de motor ni LED de compresion, ver T4.5)
+//  Estado: Fase 4 - T4.5 LED de compresion (reemplaza al motor)
+//  Fase 4 completa; el motor real se programa en la Fase 5.
 // =====================================================
 
 #include "config.h"
@@ -30,10 +30,12 @@ void setup() {
   pinMode(PIN_LED_PPG, OUTPUT);
   pinMode(PIN_LED_FUERZA, OUTPUT);
   pinMode(PIN_LED_PROFUNDIDAD, OUTPUT);
+  pinMode(PIN_LED_COMPRESION, OUTPUT);
   logMsg(LOG_INFO, "MAIN", "LED de estado (ECG) listo en GPIO " + String(PIN_LED_ESTADO));
   logMsg(LOG_INFO, "MAIN", "LED de pulso (PPG) listo en GPIO " + String(PIN_LED_PPG));
   logMsg(LOG_INFO, "MAIN", "LED de alarma (fuerza) listo en GPIO " + String(PIN_LED_FUERZA));
   logMsg(LOG_INFO, "MAIN", "LED de alarma (profundidad) listo en GPIO " + String(PIN_LED_PROFUNDIDAD));
+  logMsg(LOG_INFO, "MAIN", "LED de compresion (reemplaza al motor) listo en GPIO " + String(PIN_LED_COMPRESION));
 
   if (MODO_SIMULACION) {
     logMsg(LOG_WARN, "MAIN", "MODO_SIMULACION activo: los datos NO son de sensores reales");
@@ -73,6 +75,7 @@ void loop() {
   // Fuerza y profundidad son sensores de control, no de diagnostico:
   // esos si se leen siempre, incluso durante la compresion.
   bool comprimiendo = (fsmEstadoActual() == FSM_COMPRIMIENDO);
+  digitalWrite(PIN_LED_COMPRESION, comprimiendo ? HIGH : LOW);
 
   bool excedeFuerza = fuerzaExcedeLimite();
   bool excedeProfundidad = profundidadExcedeLimite();

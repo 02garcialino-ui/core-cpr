@@ -50,8 +50,8 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 | 0 | Preparación y organización | 🔜 En curso |
 | 1 | Entorno + primeros pasos | ⬜ |
 | 2 | Sensores por separado | ✅ |
-| 3 | Simulador de ECG (Arduino) | ⬜ |
-| 4 | Lógica de decisión (FSM, sin motor) | ⬜ |
+| 3 | Simulador de ECG (Arduino) | ✅ |
+| 4 | Lógica de decisión (FSM, sin motor) | ✅ |
 | 5 | Motor por separado | ⬜ |
 | 6 | Pantalla Nextion (HMI) | ⬜ |
 | 7 | Seguridad | ⬜ |
@@ -99,7 +99,7 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 - [x] **T4.2** — Programar `logica_fsm`: decide "vivo / paro" cruzando ECG + PPG 🤖 · _El PPG decide siempre (inicio y fin), el ECG solo se registra en logs (caso AESP). Ver `docs/diagramas/T4.1-fsm.md`._
 - [x] **T4.3** — (Punto A) Al elegir "modo niño", arrancar el diagnóstico automáticamente 🤖 · _Selección de modo con switch físico (GND = niño), no con pantalla — no depende de la Fase 6. Modo embarazada descartado (el NEMA 23 no tiene fuerza para comprimir un adulto/embarazada); queda como nota a futuro. Modo adulto: no funcional, no hace ninguna lectura._
 - [x] **T4.4** — (Punto C) Reevaluación cada 2 min (pausa 5 s) + parada inmediata si vuelve la vida 🤖 · _Probado en Wokwi con 15 s en vez de 2 min (`MODO_SIMULACION`); pasa a 2 min automático con hardware real. Durante COMPRIMIENDO no se lee ni se muestra ECG/PPG._
-- [ ] **T4.5** — Salida de prueba: encender un LED en vez del motor (para ver la decisión) 🤝
+- [x] **T4.5** — Salida de prueba: encender un LED en vez del motor (para ver la decisión) 🤝 · _Probado en Wokwi: LED prendido en COMPRIMIENDO, apagado en MONITOREANDO/REEVALUANDO._
 
 ## FASE 5 — Motor por separado
 
