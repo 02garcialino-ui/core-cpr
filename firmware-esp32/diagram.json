@@ -19,7 +19,11 @@
     { "type": "wokwi-resistor", "id": "r4", "top": 150, "left": 660, "attrs": { "value": "220" } },
     { "type": "wokwi-slide-switch", "id": "sw_modo", "top": -80, "left": 820, "attrs": {} },
     { "type": "wokwi-led", "id": "led5", "top": 100, "left": 980, "attrs": { "color": "blue" } },
-    { "type": "wokwi-resistor", "id": "r5", "top": 150, "left": 980, "attrs": { "value": "220" } }
+    { "type": "wokwi-resistor", "id": "r5", "top": 150, "left": 980, "attrs": { "value": "220" } },
+    { "type": "wokwi-a4988", "id": "driver_motor", "top": -80, "left": 1140, "attrs": {} },
+    { "type": "wokwi-stepper-motor", "id": "motor1", "top": -80, "left": 1340, "attrs": {} },
+    { "type": "wokwi-pushbutton", "id": "switch_home", "top": -80, "left": 1500, "attrs": { "color": "red" } },
+    { "type": "wokwi-slide-switch", "id": "sw_paro_emergencia", "top": -80, "left": 1660, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
@@ -55,7 +59,26 @@
 
     [ "esp:23", "r5:1", "blue", [ "v0" ] ],
     [ "r5:2", "led5:A", "blue", [ "v0" ] ],
-    [ "led5:C", "esp:GND.2", "black", [ "v0" ] ]
+    [ "led5:C", "esp:GND.2", "black", [ "v0" ] ],
+
+    [ "esp:25", "driver_motor:STEP", "blue", [ "v0" ] ],
+    [ "esp:26", "driver_motor:DIR", "blue", [ "v0" ] ],
+    [ "esp:27", "driver_motor:EN", "blue", [ "v0" ] ],
+    [ "driver_motor:RESET", "driver_motor:SLEEP", "green", [ "v0" ] ],
+    [ "driver_motor:VDD", "esp:3V3", "red", [ "v0" ] ],
+    [ "driver_motor:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "driver_motor:VMOT", "esp:VIN", "red", [ "v0" ] ],
+    [ "driver_motor:GND.1", "esp:GND.2", "black", [ "v0" ] ],
+    [ "driver_motor:1A", "motor1:A+", "orange", [ "v0" ] ],
+    [ "driver_motor:1B", "motor1:A-", "orange", [ "v0" ] ],
+    [ "driver_motor:2A", "motor1:B+", "orange", [ "v0" ] ],
+    [ "driver_motor:2B", "motor1:B-", "orange", [ "v0" ] ],
+
+    [ "switch_home:1.l", "esp:33", "green", [ "v0" ] ],
+    [ "switch_home:2.l", "esp:GND.2", "black", [ "v0" ] ],
+
+    [ "sw_paro_emergencia:2", "esp:15", "green", [ "v0" ] ],
+    [ "sw_paro_emergencia:1", "esp:GND.2", "black", [ "v0" ] ]
   ],
   "dependencies": {}
 }

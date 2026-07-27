@@ -81,6 +81,82 @@
 // del limite de 5 cm. OJO: PROVISIONAL, se recalibra con el sensor real (T9.4).
 #define PROFUNDIDAD_SIM_MAX_CM 10.0
 
+// ---- Motor (T5.1) ----
+// Protocolo STEP/DIR/ENABLE: funciona igual con el HBS57 real que con el
+// A4988 usado en Wokwi como reemplazo visual (mismo protocolo). Cambiar de
+// driver es solo cableado; el codigo no cambia.
+#define PIN_MOTOR_STEP     25
+#define PIN_MOTOR_DIR      26
+#define PIN_MOTOR_ENABLE   27
+
+// La mayoria de los drivers STEP/DIR (A4988, HBS57 incluido) habilitan el
+// motor con LOW. OJO: PROVISIONAL, confirmar con el datasheet del HBS57
+// real cuando llegue (ver T9.4).
+#define MOTOR_ENABLE_ACTIVO_BAJO  true
+
+// Pulsos por vuelta configurados en el driver (microstepping). El NEMA23
+// da 200 pasos/vuelta de fabrica; el HBS57 los subdivide segun sus
+// dip-switches. OJO: PROVISIONAL, se ajusta con el driver real (T9.4).
+#define MOTOR_PULSOS_POR_VUELTA  1000
+
+// El husillo SFU1610 (ver BOM) tiene paso de 10mm = 1cm por vuelta. Este
+// SI es un dato real y confirmado, no PROVISIONAL.
+#define HUSILLO_CM_POR_VUELTA  1.0
+
+// Pasos necesarios para mover 1 cm (derivado de los dos valores de arriba).
+#define MOTOR_PASOS_POR_CM  (MOTOR_PULSOS_POR_VUELTA / HUSILLO_CM_POR_VUELTA)
+
+// Ancho del pulso STEP (tiempo en alto antes de bajarlo). 5us es un valor
+// tipico y seguro para drivers step/dir; se ajusta si el HBS57 real pide
+// un minimo distinto (ver datasheet).
+#define MOTOR_PULSO_US  5
+
+// ---- Homing (T5.2) ----
+// Final de carrera del extremo RETRAIDO (lejos del paciente). Es el unico
+// punto fisico fijo del riel: la profundidad de compresion depende del
+// paciente (su torax, que varia), pero el extremo retraido es siempre el
+// mismo tope mecanico del chasis. Por eso el homing se hace ahi.
+#define PIN_FINAL_CARRERA_HOME  33
+
+// Velocidad mas lenta durante el homing, para no golpear fuerte el tope
+// mecanico al encontrarlo.
+#define MOTOR_HOMING_DELAY_US  1500
+
+// Tope de seguridad: si el homing recorre mas que el largo maximo del
+// husillo (30 cm, ver BOM SFU1610: 200-300mm) sin encontrar el switch,
+// algo esta mal (switch desconectado o roto) y hay que abortar en vez de
+// girar el motor indefinidamente.
+#define HOMING_MAX_PASOS  ((long)(MOTOR_PASOS_POR_CM * 30))
+
+// ---- Ritmo y profundidad de compresion (T5.3 / Punto D) ----
+// CPM objetivo fijo dentro del rango permitido (100-120). 110 = punto medio.
+#define RITMO_CPM_OBJETIVO  110
+
+// Duracion de un ciclo completo (bajar + subir), segun el ritmo objetivo.
+#define DURACION_CICLO_MS   (60000UL / RITMO_CPM_OBJETIVO)
+
+// Reparto del ciclo: mitad bajando, mitad subiendo. Mismo criterio que usan
+// los compresores mecanicos reales (ej. LUCAS): igualar tiempo de compresion
+// y de relajacion para no acortar el "recoil" del torax (perfusion coronaria).
+#define DURACION_BAJADA_MS  (DURACION_CICLO_MS / 2)
+#define DURACION_SUBIDA_MS  (DURACION_CICLO_MS / 2)
+
+// Pasos totales de una compresion completa (ida), segun PROFUNDIDAD_MAX_CM
+// (limite clinico AHA ya definido, no es un valor nuevo).
+#define PASOS_COMPRESION  ((long)(MOTOR_PASOS_POR_CM * PROFUNDIDAD_MAX_CM))
+
+// Fraccion del recorrido dedicada a acelerar/desacelerar (rampa); el resto
+// va a velocidad de crucero constante. 20% es un valor de arranque tipico
+// para un perfil trapezoidal simple.
+#define FRACCION_RAMPA  0.2
+
+// ---- Posicion y cruce con VL53L0X (T5.4 / Punto E) ----
+// Cuanto puede diferir la posicion calculada por conteo de pasos y la
+// medida por el sensor de profundidad antes de avisar. Un valor chico
+// es sensible a ruido de mas (falsas alarmas); uno grande no detecta
+// perdida real de pasos. 1 cm es un punto de partida razonable.
+#define TOLERANCIA_POSICION_CM  1.0
+
 // ---- Tiempos de la FSM (T4.4) ----
 // En MODO_SIMULACION se usa un tiempo de compresion corto (15 s) para
 // poder probar en Wokwi sin esperar los 2 minutos reales. Con hardware
@@ -91,6 +167,15 @@
   #define DURACION_COMPRESION_MS   (2UL * 60UL * 1000UL)
 #endif
 #define DURACION_REEVALUACION_MS  (5UL * 1000UL)   // pausa para revisar (AHA limita a ~10s)
+
+// ---- Seguridad: paro de emergencia (T7.1) ----
+// Boton tipo "hongo NC" (normalmente cerrado, ver BOM): el circuito esta
+// CERRADO (LOW) mientras no se presiona. Al presionarlo, O si el cable se
+// corta/desconecta, el circuito se ABRE (HIGH) -- misma reaccion en ambos
+// casos, a proposito (una falla se trata igual que una emergencia real).
+// En Wokwi se simula con un switch (no un pulsador), para poder dejarlo
+// "trabado" en la posicion de emergencia y probar el efecto sin soltarlo.
+#define PIN_PARO_EMERGENCIA  15
 
 // ---- Límites clínicos (AHA - modo niño) ----
 // Fuente: estándar AHA pediátrico, según se definió en T0.1.

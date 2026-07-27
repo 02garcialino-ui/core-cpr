@@ -52,7 +52,7 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 | 2 | Sensores por separado | ✅ |
 | 3 | Simulador de ECG (Arduino) | ✅ |
 | 4 | Lógica de decisión (FSM, sin motor) | ✅ |
-| 5 | Motor por separado | ⬜ |
+| 5 | Motor por separado | ✅ |
 | 6 | Pantalla Nextion (HMI) | ⬜ |
 | 7 | Seguridad | ⬜ |
 | 8 | Integración | ⬜ |
@@ -103,13 +103,21 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 
 ## FASE 5 — Motor por separado
 
-- [ ] **T5.1** — Módulo `actuador_motor`: mover el NEMA 23 vía STEP/DIR/ENABLE (simulado) 🤖🧑
-- [ ] **T5.2** — Secuencia de **homing** con final de carrera (posición cero) 🤖
-- [ ] **T5.3** — (Punto D) Lograr ~5 cm de profundidad y 100–120 CPM con movimiento suave 🤖
-- [ ] **T5.4** — (Punto E) Que la ESP32 sepa la posición (conteo de pasos + homing + VL53L0X) 🤖
-- [ ] **T5.5** — Probar límites: abortar si pasa 5 cm o 250 N 🤝
+- [x] **T5.1** — Módulo `actuador_motor`: mover el NEMA 23 vía STEP/DIR/ENABLE (simulado) 🤖🧑 · _Probado en Wokwi (driver A4988 + motor genérico como reemplazo del HBS57 real, mismo protocolo). Prueba de arranque: 1 cm adelante y 1 cm atrás. Pulsos/vuelta (1000) y polaridad de ENABLE (LOW) quedan como PROVISIONAL hasta el driver real (T9.4)._
+- [x] **T5.2** — Secuencia de **homing** con final de carrera (posición cero) 🤖 · _Probado en Wokwi: `motorHoming()` mueve el motor hacia el extremo retraído (único punto físico fijo del riel) hasta activar el switch (simulado con pulsador), define ahí el cero. Tope de seguridad de 30 cm si el switch no se activa. Velocidad de homing (`MOTOR_HOMING_DELAY_US`) es un valor de arranque, no PROVISIONAL crítico._
+- [x] **T5.3** — (Punto D) Lograr ~5 cm de profundidad y 100–120 CPM con movimiento suave 🤖 · _Probado en Wokwi: ciclo continuo bajar/subir con rampa de aceleración/desaceleración (perfil trapezoidal), a 110 CPM fijo (punto medio del rango) y reparto 50/50 bajada/subida (mismo criterio que compresores mecánicos reales, para no acortar el recoil). Movimiento no bloqueante (`motorIniciarTramo`/`motorActualizarTramo`); se quitó el `delay(500)` del `loop()` y se reemplazó por un cronómetro no bloqueante, para que el motor pueda revisarse miles de veces por segundo sin congelar el resto del programa._
+- [x] **T5.4** — (Punto E) Que la ESP32 sepa la posición (conteo de pasos + homing + VL53L0X) 🤖 · _Probado en Wokwi: conteo de pasos desde el home (`motorPosicionCm()`) cruzado contra el sensor de profundidad (VL53L0X simulado). Simplificación: en esta prueba aislada el home se toma como si fuera el punto de contacto con el pecho, ya que `POSICION_LISTO_CM` (distancia real de aproximación) aún no está definida — se ajusta cuando se arme la estructura física. `TOLERANCIA_POSICION_CM` (1 cm) es un valor de arranque, ajustable._
+- [~] **T5.5** — Probar límites: abortar si pasa 5 cm o 250 N 🤝 · _En stand-by: el motor todavía no está conectado a `fuerzaExcedeLimite()`/`profundidadExcedeLimite()` (solo prenden LED/log). El "abortar" real se programa en T7.2 (Seguridad); ahí se retoma esta prueba._
 
 ## FASE 6 — Pantalla Nextion (HMI)
+
+> **Se retoma en la próxima sesión** (se había puesto en pausa para adelantar la
+> Fase 7, pero T7.2 —fallo del PPG— necesita la pantalla, así que quedan
+> unidas). T6.1/T6.2 tienen redacción vieja (menú de 3 modos) que hay que
+> actualizar — el modo ahora se elige con el switch (T4.3), no por pantalla.
+> T6.3 va a incluir una gráfica real tipo osciloscopio del ECG (decidido con
+> Lino), que además hace falta para la pantalla de confirmación de T7.2 (ver
+> nota ahí abajo).
 
 - [ ] **T6.1** — Módulo `hmi_pantalla`: menú con los 3 modos 🤖
 - [ ] **T6.2** — Adulto y Embarazada muestran "Modo no disponible" y no operan 🤖
@@ -118,8 +126,12 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 
 ## FASE 7 — Seguridad
 
-- [ ] **T7.1** — Módulo `seguridad`: botón de paro de emergencia (corta el motor) 🤖🧑
-- [ ] **T7.2** — (Punto B) Reacción ante fallo de sensores (antes vs durante las compresiones) 🤖
+- [x] **T7.1** — Módulo `seguridad`: botón de paro de emergencia (corta el motor) 🤖🧑 · _Probado en Wokwi: botón real es "hongo NC" (falla de cable = mismo efecto que presionarlo, por seguridad); simulado con un switch (no un pulsador) para poder dejarlo trabado y probar el corte sin soltar. Se revisa en cada vuelta de loop() (no cada 500ms), para cortar el motor de inmediato._
+- [ ] **T7.2** — (Punto B) Reacción ante fallo de sensores (antes vs durante las compresiones) 🤖 · _Pendiente para la próxima sesión, diseño ya acordado con Lino:_
+  - _**Durante la compresión** (fuerza/profundidad fallan, sensor NAN): abortar el motor (mismo criterio que el paro de emergencia). Propuesto por Claude, sin confirmación final de Lino todavía — repasar al retomar._
+  - _**Antes de comprimir, falla el PPG** (el sensor que decide, T4.1): idea de Lino, confirmada — NO asumir automáticamente. La pantalla Nextion cambia a una página de confirmación que muestra a la vez: (1) la gráfica del ECG (osciloscopio, T6.3) para ver si hay línea plana, (2) el mensaje "Fallo en el sensor, favor de confirmar el paro cardíaco", y (3) 2 botones táctiles ("Sí hay paro" / "No hay paro"). El usuario decide viendo la gráfica Y palpando el pulso a mano (cubre el caso AESP: línea plana pero si palpa pulso, no es paro)._
+  - _**Respaldo por tiempo**: si nadie confirma en **10 segundos**, el sistema arranca las compresiones automáticamente (fail-safe hacia la acción, mismo criterio AHA de "ante la duda, comprimir"). Requiere un estado nuevo en la FSM con temporizador (mismo patrón que `DURACION_REEVALUACION_MS`)._
+  - _Implica agregar a `hmi_pantalla`: cambio de página/mostrar-ocultar por comando, y leer el evento de toque que la Nextion manda de vuelta por el mismo cable serial (hasta ahora la comunicación solo iba ESP32 → pantalla)._
 - [ ] **T7.3** — Buzzer: alarmas acústicas (paciente vivo, fallo, límite excedido) 🤖
 - [ ] **T7.4** — Finales de carrera como tope físico de seguridad 🤝
 
@@ -171,3 +183,4 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 | Tarea | Motivo | Plan para resolverla |
 |---|---|---|
 | T3.4 | Wokwi (editor web) no soporta programar dos placas distintas en un mismo proyecto | Probar con el Arduino y la ESP32 físicos cuando lleguen los componentes (ver T9.4) |
+| T5.5 | El motor todavía no está conectado a los límites de fuerza/profundidad (falta la lógica de "abortar") | Se retoma en T7.2 (Seguridad), cuando se programe la reacción real ante límites excedidos |
