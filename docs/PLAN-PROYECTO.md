@@ -53,7 +53,7 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 | 3 | Simulador de ECG (Arduino) | ✅ |
 | 4 | Lógica de decisión (FSM, sin motor) | ✅ |
 | 5 | Motor por separado | ✅ |
-| 6 | Pantalla Nextion (HMI) | ⬜ |
+| 6 | Pantalla Nextion (HMI) | ✅ |
 | 7 | Seguridad | ⬜ |
 | 8 | Integración | ⬜ |
 | 9 | Montaje físico + alimentación | ⬜ |
@@ -111,18 +111,10 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 
 ## FASE 6 — Pantalla Nextion (HMI)
 
-> **Se retoma en la próxima sesión** (se había puesto en pausa para adelantar la
-> Fase 7, pero T7.2 —fallo del PPG— necesita la pantalla, así que quedan
-> unidas). T6.1/T6.2 tienen redacción vieja (menú de 3 modos) que hay que
-> actualizar — el modo ahora se elige con el switch (T4.3), no por pantalla.
-> T6.3 va a incluir una gráfica real tipo osciloscopio del ECG (decidido con
-> Lino), que además hace falta para la pantalla de confirmación de T7.2 (ver
-> nota ahí abajo).
-
-- [ ] **T6.1** — Módulo `hmi_pantalla`: menú con los 3 modos 🤖
-- [ ] **T6.2** — Adulto y Embarazada muestran "Modo no disponible" y no operan 🤖
-- [ ] **T6.3** — Mostrar estado del paciente y alertas en pantalla 🤖
-- [ ] **T6.4** — Botón físico "Reintentar lectura" para el caso de fallo de sensores 🤝
+- [x] **T6.1** — Módulo `hmi_pantalla`: muestra el modo activo 🤖 · _Redacción actualizada: ya no es un "menú" de selección — el modo se elige por switch físico (T4.3), la pantalla solo confirma cuál quedó activo ("Modo: NINO" / "Modo ADULTO - no disponible"). Probado en Wokwi: `hmiIniciar()` abre Serial2 y manda la página inicial; `hmiMostrarModo()` actualiza el texto cuando cambia el modo. Wokwi no simula la Nextion real, se verifica por los logs `[HMI]`. Pines (RX=13/TX=14) y modelo (NX3224T024) quedan PROVISIONAL hasta el hardware real (T9.4)._
+- [x] **T6.2** — Adulto muestra "Modo no disponible" y no opera 🤖 · _Cubierta por T4.3 (el `return` en `loop()` corta todo en modo ADULTO) + T6.1 (`hmiMostrarModo()` ya manda el mensaje a la pantalla). No hizo falta programarla aparte. "Embarazada" descartada desde T4.3, ya no es parte del alcance._
+- [x] **T6.3** — Mostrar estado del paciente y alertas en pantalla 🤖 · _Probado en Wokwi: `hmiMostrarEstado()` manda a `txtEstado` el estado clínico simple ("VIVO" / "PARO - COMPRIMIENDO" / "REEVALUANDO") cada vez que cambia el estado de la FSM; `hmiGraficarEcg()` manda el ECG (reescalado de 0–3300mV a 0–255) al componente Waveform `s0`, solo mientras no está comprimiendo. Alertas de fuerza/profundidad/paro quedaron fuera de esta tarea (a propósito, se suman en T7.2/T7.3). Componentes nuevos en la página `inicio` del editor Nextion: `txtEstado` (Text) y `s0` (Waveform, nombre autogenerado)._
+- [x] **T6.4** — Botón físico "Reintentar lectura" para el caso de fallo de sensores 🤝 · _Probado en Wokwi: `botonReintentarPresionado()` (en `seguridad.h/.cpp`) detecta el click con antirebote y lo loguea (`>>> Reintentar lectura solicitado`). Pin `PIN_BOTON_REINTENTAR` = GPIO 21, PROVISIONAL (pin típico de I2C, puede reasignarse en T9.4). Por ahora solo detecta el click — la acción real de reintentar el sensor que falló se conecta en T7.2, cuando exista la lógica de fallo de sensores._
 
 ## FASE 7 — Seguridad
 

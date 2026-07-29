@@ -1,6 +1,7 @@
 #include "sensor_profundidad.h"
 #include "config.h"
 #include "logger.h"
+#include "simulador_falla.h"
 
 void profundidadIniciar() {
   if (MODO_SIMULACION) {
@@ -18,6 +19,10 @@ void profundidadIniciar() {
 // Todo lo demas del proyecto funciona igual en los dos casos.
 float profundidadLeerCm() {
   if (MODO_SIMULACION) {
+    if (simuladorFallaActiva()) {
+      return NAN;   // === SOLO PARA PRUEBAS (T7.2) ===
+    }
+
     // El ADC de la ESP32 entrega 0..4095. Lo escalamos al rango simulado
     // (0-10 cm) para poder probar bien el limite de 5 cm.
     int lectura = analogRead(PIN_PROFUNDIDAD_SIM);
@@ -33,11 +38,13 @@ float profundidadLeerCm() {
 bool profundidadExcedeLimite() {
   float valor = profundidadLeerCm();
 
-  // NAN significa que el sensor fallo. La FSM decidira que hacer con esto
-  // en la Fase 7 (T7.2).
+  // NAN significa que el sensor fallo. Se trata IGUAL que exceder el
+  // limite (T7.2): no se deja el motor operando a ciegas sin saber si
+  // esta pasando el limite de verdad, mismo criterio que el paro de
+  // emergencia.
   if (isnan(valor)) {
     logMsg(LOG_ERROR, "PROFUNDIDAD", "Lectura invalida: el sensor no responde");
-    return false;
+    return true;
   }
 
   bool excede = (valor > PROFUNDIDAD_MAX_CM);

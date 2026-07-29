@@ -1,6 +1,7 @@
 #include "sensor_ppg.h"
 #include "config.h"
 #include "logger.h"
+#include "simulador_falla.h"
 
 void ppgIniciar() {
   if (MODO_SIMULACION) {
@@ -18,6 +19,10 @@ void ppgIniciar() {
 // Todo lo demas del proyecto funciona igual en los dos casos.
 float ppgLeerValor() {
   if (MODO_SIMULACION) {
+    if (simuladorFallaActiva()) {
+      return NAN;   // === SOLO PARA PRUEBAS (T7.2) ===
+    }
+
     // El ADC de la ESP32 entrega 0..4095. Lo escalamos a 0..3300 mV
     // para que el numero se parezca a lo que dara el sensor real.
     int lectura = analogRead(PIN_PPG_SIM);
@@ -35,7 +40,9 @@ bool ppgHayPulso() {
 
   // NAN significa que el sensor fallo. No es lo mismo que "no hay pulso":
   // un paciente con pulso pero con el sensor roto no debe tratarse como paro.
-  // La FSM decidira que hacer con esto en la Fase 7 (T7.2).
+  // Por ahora sigue devolviendo false (tratado como "sin pulso"): la
+  // pantalla de confirmacion que evita esa suposicion automatica es
+  // T7.2 Parte B, todavia pendiente.
   if (isnan(valor)) {
     logMsg(LOG_ERROR, "PPG", "Lectura invalida: el sensor no responde");
     return false;

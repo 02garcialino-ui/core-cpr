@@ -177,6 +177,30 @@
 // "trabado" en la posicion de emergencia y probar el efecto sin soltarlo.
 #define PIN_PARO_EMERGENCIA  15
 
+// ---- Seguridad: boton "Reintentar lectura" (T6.4) ----
+// Pulsador normal (no NC como el de emergencia). GPIO 21: es el unico pin
+// libre con soporte de pull-up que queda disponible. OJO, PROVISIONAL: es
+// uno de los pines tipicos de I2C (SDA) -- puede que haya que reasignarlo
+// cuando el ADS1115/VL53L0X reales se conecten por I2C de verdad (T9.4).
+#define PIN_BOTON_REINTENTAR  21
+#define DEBOUNCE_BOTON_MS     50    // tiempo de antirebote (ms)
+
+// ---- SOLO PARA PRUEBAS: simular falla de sensores (T7.2) ----
+// Ver simulador_falla.h. Ultimo pin libre con pull-up disponible.
+#define PIN_SIM_FALLA_SENSORES  22
+
+// ---- Pantalla Nextion (T6.1) ----
+// Puerto serial aparte (Serial2), separado de los pines ya usados por el
+// HX711 y el motor. La pantalla NO elige el modo (eso lo hace el switch
+// fisico, T4.3): solo confirma cual quedo activo.
+// Modelo NX3224T024 (2.4", serie Basica): OJO, PROVISIONAL -- se confirma
+// contra la caja real cuando llegue (ver T9.4).
+// Wokwi no simula esta pantalla: los comandos solo se verifican por los
+// logs (ver hmi_pantalla.cpp), la prueba visual real queda para T9.4.
+#define PIN_NEXTION_RX   13     // ESP32 recibe (se conecta al TX de la Nextion)
+#define PIN_NEXTION_TX   14     // ESP32 transmite (se conecta al RX de la Nextion)
+#define NEXTION_BAUDIOS  9600   // velocidad de fabrica de la Nextion
+
 // ---- Límites clínicos (AHA - modo niño) ----
 // Fuente: estándar AHA pediátrico, según se definió en T0.1.
 #define PROFUNDIDAD_MAX_CM   5.0   // profundidad máxima de compresión (cm)

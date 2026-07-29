@@ -23,7 +23,9 @@
     { "type": "wokwi-a4988", "id": "driver_motor", "top": -80, "left": 1140, "attrs": {} },
     { "type": "wokwi-stepper-motor", "id": "motor1", "top": -80, "left": 1340, "attrs": {} },
     { "type": "wokwi-pushbutton", "id": "switch_home", "top": -80, "left": 1500, "attrs": { "color": "red" } },
-    { "type": "wokwi-slide-switch", "id": "sw_paro_emergencia", "top": -80, "left": 1660, "attrs": {} }
+    { "type": "wokwi-slide-switch", "id": "sw_paro_emergencia", "top": -80, "left": 1660, "attrs": {} },
+    { "type": "wokwi-pushbutton", "id": "boton_reintentar", "top": -80, "left": 1820, "attrs": { "color": "green" } },
+    { "type": "wokwi-slide-switch", "id": "sw_sim_falla", "top": -80, "left": 1980, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
@@ -78,7 +80,13 @@
     [ "switch_home:2.l", "esp:GND.2", "black", [ "v0" ] ],
 
     [ "sw_paro_emergencia:2", "esp:15", "green", [ "v0" ] ],
-    [ "sw_paro_emergencia:1", "esp:GND.2", "black", [ "v0" ] ]
+    [ "sw_paro_emergencia:1", "esp:GND.2", "black", [ "v0" ] ],
+
+    [ "boton_reintentar:1.l", "esp:21", "green", [ "v0" ] ],
+    [ "boton_reintentar:2.l", "esp:GND.2", "black", [ "v0" ] ],
+
+    [ "sw_sim_falla:2", "esp:22", "green", [ "v0" ] ],
+    [ "sw_sim_falla:1", "esp:GND.2", "black", [ "v0" ] ]
   ],
   "dependencies": {}
 }

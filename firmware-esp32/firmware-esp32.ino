@@ -1,6 +1,7 @@
 // =====================================================
 //  Core CPR - Firmware principal (ESP32)
-//  Estado: Fase 7 - T7.1 paro de emergencia (adelantada; Fase 6 en pausa)
+//  Estado: Fase 7 - T7.2 Parte A (aborto por limite/falla de fuerza y
+//  profundidad, mismo criterio que el paro de emergencia)
 //  El motor corre un ciclo de compresion continuo en paralelo al resto
 //  del programa; todavia no esta conectado a la FSM (eso viene en
 //  fases posteriores de integracion, Fase 8).
@@ -16,6 +17,8 @@
 #include "logica_fsm.h"
 #include "selector_modo.h"
 #include "seguridad.h"
+#include "hmi_pantalla.h"
+#include "simulador_falla.h"
 
 // Guardamos el estado anterior para avisar SOLO cuando cambia.
 // Si no, la consola se llena de mensajes repetidos y no se ve nada.
@@ -24,9 +27,13 @@ bool habiaPulso = false;
 bool habiaExcesoFuerza = false;
 bool habiaExcesoProfundidad = false;
 bool habiaParoEmergencia = false;
+bool habiaAbortoPorLimite = false;
+bool abortoPorLimite = false;   // se actualiza cada 500ms, se usa en cada vuelta
 bool primeraVuelta = true;
 ModoPaciente modoAnterior = MODO_ADULTO;
 bool primerModo = true;
+EstadoFsm estadoAnterior = FSM_MONITOREANDO;
+bool primerEstado = true;
 
 void setup() {
   loggerIniciar();
@@ -47,6 +54,8 @@ void setup() {
   }
 
   selectorModoIniciar();
+  simuladorFallaIniciar();
+  hmiIniciar();
   ecgIniciar();
   ppgIniciar();
   fuerzaIniciar();
@@ -78,7 +87,7 @@ void loop() {
   // bloque de 500ms): si esta activo, corta el motor de inmediato y no
   // deja que la prueba de ciclo avance ni un paso mas.
   bool paroActivo = paroEmergenciaActivo();
-  if (paroActivo) {
+  if (paroActivo || abortoPorLimite) {
     motorHabilitar(false);
   } else {
     // Avanza el motor si ya toca el proximo paso (no bloquea). Corre
@@ -87,14 +96,23 @@ void loop() {
     motorPruebaCicloActualizar();
   }
 
+  // Se revisa en cada vuelta de loop() (no cada 500ms) para que el
+  // antirebote de botonReintentarPresionado() tenga lecturas frecuentes.
+  // Por ahora solo se loguea el click; la accion real de reintentar el
+  // sensor que fallo se conecta en T7.2.
+  if (botonReintentarPresionado()) {
+    logMsg(LOG_INFO, "SEGURIDAD", ">>> Reintentar lectura solicitado (boton presionado)");
+  }
+
   ModoPaciente modoActual = selectorModoLeer();
 
   if (primerModo || modoActual != modoAnterior) {
     if (modoActual == MODO_NINO) {
       logMsg(LOG_INFO, "MAIN", ">>> MODO NINO seleccionado: iniciando diagnostico");
     } else {
-      logMsg(LOG_WARN, "MAIN", ">>> MODO ADULTO seleccionado: Modo no disponible (mensaje de pantalla, Fase 6)");
+      logMsg(LOG_WARN, "MAIN", ">>> MODO ADULTO seleccionado: Modo no disponible");
     }
+    hmiMostrarModo(modoActual);
     modoAnterior = modoActual;
     primerModo = false;
   }
@@ -127,13 +145,35 @@ void loop() {
   // movimiento ensucia esas lecturas (ver docs/diagramas/T4.1-fsm.md).
   // Fuerza y profundidad son sensores de control, no de diagnostico:
   // esos si se leen siempre, incluso durante la compresion.
-  bool comprimiendo = (fsmEstadoActual() == FSM_COMPRIMIENDO);
+  EstadoFsm estadoActual = fsmEstadoActual();
+  bool comprimiendo = (estadoActual == FSM_COMPRIMIENDO);
   digitalWrite(PIN_LED_COMPRESION, comprimiendo ? HIGH : LOW);
+
+  if (primerEstado || estadoActual != estadoAnterior) {
+    hmiMostrarEstado(estadoActual);
+    estadoAnterior = estadoActual;
+    primerEstado = false;
+  }
 
   bool excedeFuerza = fuerzaExcedeLimite();
   bool excedeProfundidad = profundidadExcedeLimite();
   digitalWrite(PIN_LED_FUERZA, excedeFuerza ? HIGH : LOW);
   digitalWrite(PIN_LED_PROFUNDIDAD, excedeProfundidad ? HIGH : LOW);
+
+  // ---- Aborto por limite o falla de sensor (T7.2 Parte A) ----
+  // Se actualiza aca (cada 500ms, junto con la lectura de los sensores)
+  // pero se aplica en CADA vuelta de loop() (ver el bloque del paro de
+  // emergencia, arriba), igual que T7.1: una vez detectado, el motor
+  // queda deshabilitado hasta la proxima revision que lo confirme OK.
+  abortoPorLimite = excedeFuerza || excedeProfundidad;
+  if (primeraVuelta || abortoPorLimite != habiaAbortoPorLimite) {
+    if (abortoPorLimite) {
+      logMsg(LOG_ERROR, "SEGURIDAD", ">>> LIMITE O FALLA DE FUERZA/PROFUNDIDAD: motor abortado");
+    } else {
+      logMsg(LOG_INFO, "SEGURIDAD", ">>> Fuerza y profundidad OK, motor puede operar");
+    }
+    habiaAbortoPorLimite = abortoPorLimite;
+  }
 
   // ---- Cruce de posicion (T5.4 / Punto E) ----
   // Compara lo que el motor "cree" (conteo de pasos desde el home) contra
@@ -153,6 +193,7 @@ void loop() {
   if (!comprimiendo) {
     bool haySenalEcg = ecgHaySenal();
     bool hayPulso = ppgHayPulso();
+    hmiGraficarEcg(ecgLeerValor());
 
     digitalWrite(PIN_LED_ESTADO, haySenalEcg ? HIGH : LOW);
     digitalWrite(PIN_LED_PPG, hayPulso ? HIGH : LOW);
