@@ -168,6 +168,23 @@
 #endif
 #define DURACION_REEVALUACION_MS  (5UL * 1000UL)   // pausa para revisar (AHA limita a ~10s)
 
+// ---- Confirmacion de fallo del PPG (T7.2 Parte B) ----
+// Si el PPG (el sensor que decide el paro, T4.1) falla ANTES de comprimir,
+// no se asume el paro solo: se pide confirmar a mano en la pantalla. Si
+// nadie confirma en este tiempo, arranca solo (fail-safe hacia la accion,
+// mismo criterio AHA que "ante la duda, comprimir").
+#define DURACION_CONFIRMACION_MS  (10UL * 1000UL)
+
+// Pagina y componentes de la pantalla de confirmacion (editor Nextion).
+// Ya confirmados contra la pagina real "confirmar" (con el texto
+// "txtMensaje" y los botones "btnSiParo"/"btnNoParo", con "Send
+// Component ID" activado en su Touch Press Event). Sin probar en Wokwi
+// (no simula la pantalla real, T6.1); se valida con hardware real en
+// T9.4, incluido el evento de toque que manda la pantalla.
+#define NEXTION_PAGINA_CONFIRMACION   1
+#define NEXTION_COMPONENTE_BTN_SI     2
+#define NEXTION_COMPONENTE_BTN_NO     3
+
 // ---- Seguridad: paro de emergencia (T7.1) ----
 // Boton tipo "hongo NC" (normalmente cerrado, ver BOM): el circuito esta
 // CERRADO (LOW) mientras no se presiona. Al presionarlo, O si el cable se

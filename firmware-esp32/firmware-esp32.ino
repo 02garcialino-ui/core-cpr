@@ -1,7 +1,8 @@
 // =====================================================
 //  Core CPR - Firmware principal (ESP32)
-//  Estado: Fase 7 - T7.2 Parte A (aborto por limite/falla de fuerza y
-//  profundidad, mismo criterio que el paro de emergencia)
+//  Estado: Fase 7 - T7.2 Parte B (confirmacion de fallo del PPG antes
+//  de comprimir: pantalla de confirmacion + fail-safe de 10s. El toque
+//  real de los botones queda sin probar en Wokwi, ver hmi_pantalla.h)
 //  El motor corre un ciclo de compresion continuo en paralelo al resto
 //  del programa; todavia no esta conectado a la FSM (eso viene en
 //  fases posteriores de integracion, Fase 8).
@@ -98,10 +99,12 @@ void loop() {
 
   // Se revisa en cada vuelta de loop() (no cada 500ms) para que el
   // antirebote de botonReintentarPresionado() tenga lecturas frecuentes.
-  // Por ahora solo se loguea el click; la accion real de reintentar el
-  // sensor que fallo se conecta en T7.2.
   if (botonReintentarPresionado()) {
     logMsg(LOG_INFO, "SEGURIDAD", ">>> Reintentar lectura solicitado (boton presionado)");
+    // T7.2 Parte B: si estaba silenciada la confirmacion de fallo del
+    // PPG (el usuario ya habia dicho "NO hay paro" con el sensor roto),
+    // este boton reactiva el chequeo normal.
+    fsmReintentarConfirmacion();
   }
 
   ModoPaciente modoActual = selectorModoLeer();
@@ -153,6 +156,19 @@ void loop() {
     hmiMostrarEstado(estadoActual);
     estadoAnterior = estadoActual;
     primerEstado = false;
+  }
+
+  // ---- Confirmacion de fallo del PPG (T7.2 Parte B) ----
+  // Mientras se espera confirmacion, se revisa si llego un toque desde
+  // la pantalla. Sin probar en Wokwi (no simula la Nextion real, ver
+  // hmi_pantalla.h); se valida con hardware real en T9.4.
+  if (estadoActual == FSM_CONFIRMANDO_FALLO) {
+    ToqueNextion toque = hmiLeerToque();
+    if (toque == TOQUE_SI_HAY_PARO) {
+      fsmConfirmarParo();
+    } else if (toque == TOQUE_NO_HAY_PARO) {
+      fsmDescartarParo();
+    }
   }
 
   bool excedeFuerza = fuerzaExcedeLimite();

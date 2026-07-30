@@ -18,6 +18,10 @@ static long g_posicionPasos = 0;
 enum EstadoCicloPrueba { CICLO_BAJANDO, CICLO_SUBIENDO };
 static EstadoCicloPrueba g_estadoCiclo = CICLO_BAJANDO;
 
+// ---- Log de motorHabilitar() (solo cuando cambia, ver mas abajo) ----
+static bool g_habilitadoAnterior = false;
+static bool g_primeraLlamadaHabilitar = true;
+
 void motorIniciar() {
   pinMode(PIN_MOTOR_STEP, OUTPUT);
   pinMode(PIN_MOTOR_DIR, OUTPUT);
@@ -38,8 +42,14 @@ void motorHabilitar(bool activar) {
   int nivelInactivo = MOTOR_ENABLE_ACTIVO_BAJO ? HIGH : LOW;
   digitalWrite(PIN_MOTOR_ENABLE, activar ? nivelActivo : nivelInactivo);
 
-  if (MODO_DEBUG) {
+  // Se llama en cada vuelta de loop() mientras el paro de emergencia o el
+  // aborto por limite (T7.1/T7.2 Parte A) estan activos: sin este filtro,
+  // el log se repite miles de veces por segundo. Mismo patron "solo
+  // cuando cambia" que ya se usa en firmware-esp32.ino.
+  if (MODO_DEBUG && (g_primeraLlamadaHabilitar || activar != g_habilitadoAnterior)) {
     logMsg(LOG_DEBUG, "MOTOR", activar ? "habilitado" : "deshabilitado");
+    g_habilitadoAnterior = activar;
+    g_primeraLlamadaHabilitar = false;
   }
 }
 

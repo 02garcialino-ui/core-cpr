@@ -32,11 +32,25 @@ void hmiMostrarModo(ModoPaciente modo) {
 }
 
 void hmiMostrarEstado(EstadoFsm estado) {
+  // T7.2 Parte B: el PPG fallo antes de comprimir, no se asume el paro
+  // solo -- se cambia a la pagina de confirmacion en vez de actualizar
+  // el texto de "inicio" (txtEstado no existe ahi, ver hmi_pantalla.h).
+  if (estado == FSM_CONFIRMANDO_FALLO) {
+    hmiEnviarComando("page confirmar");
+    hmiEnviarComando("txtMensaje.txt=\"Fallo en el sensor, favor de confirmar el paro cardiaco\"");
+    return;
+  }
+
+  // Para cualquier otro estado, siempre se asegura volver a "inicio" (no
+  // importa si ya estabamos ahi o veniamos de "confirmar").
+  hmiEnviarComando("page inicio");
+
   String texto;
   switch (estado) {
     case FSM_MONITOREANDO: texto = "VIVO"; break;
     case FSM_COMPRIMIENDO: texto = "PARO - COMPRIMIENDO"; break;
     case FSM_REEVALUANDO:  texto = "REEVALUANDO"; break;
+    default: break;   // FSM_CONFIRMANDO_FALLO ya se filtro arriba
   }
   hmiEnviarComando("txtEstado.txt=\"" + texto + "\"");
 }
@@ -48,4 +62,42 @@ void hmiGraficarEcg(float valorMv) {
   int valor = (int)((valorMv / 3300.0) * 255);
   valor = constrain(valor, 0, 255);
   hmiEnviarComando("add s0,0," + String(valor));
+}
+
+// Protocolo de toque de Nextion: 0x65 + pagina + componente + evento +
+// 0xFF 0xFF 0xFF (7 bytes). evento=0x01 es "press" (se toco el boton).
+// OJO: sin probar en Wokwi (ver hmi_pantalla.h) -- se valida en T9.4,
+// donde tambien se confirma este formato contra el manual de la Nextion.
+ToqueNextion hmiLeerToque() {
+  if (Serial2.available() < 7) return TOQUE_NINGUNO;
+
+  byte b[7];
+  for (int i = 0; i < 7; i++) {
+    b[i] = Serial2.read();
+  }
+
+  bool esEventoDeToque = (b[0] == 0x65 && b[4] == 0xFF && b[5] == 0xFF && b[6] == 0xFF);
+  if (!esEventoDeToque) {
+    logMsg(LOG_WARN, "HMI", "Bytes recibidos no reconocidos (se esperaba un evento de toque)");
+    return TOQUE_NINGUNO;
+  }
+
+  byte pagina = b[1];
+  byte componente = b[2];
+  byte evento = b[3];
+
+  if (pagina != NEXTION_PAGINA_CONFIRMACION || evento != 0x01) {
+    return TOQUE_NINGUNO;
+  }
+
+  if (componente == NEXTION_COMPONENTE_BTN_SI) {
+    logMsg(LOG_WARN, "HMI", "<- Toque: boton 'SI hay paro'");
+    return TOQUE_SI_HAY_PARO;
+  }
+  if (componente == NEXTION_COMPONENTE_BTN_NO) {
+    logMsg(LOG_INFO, "HMI", "<- Toque: boton 'NO hay paro'");
+    return TOQUE_NO_HAY_PARO;
+  }
+
+  return TOQUE_NINGUNO;
 }

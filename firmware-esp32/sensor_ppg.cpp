@@ -40,9 +40,9 @@ bool ppgHayPulso() {
 
   // NAN significa que el sensor fallo. No es lo mismo que "no hay pulso":
   // un paciente con pulso pero con el sensor roto no debe tratarse como paro.
-  // Por ahora sigue devolviendo false (tratado como "sin pulso"): la
-  // pantalla de confirmacion que evita esa suposicion automatica es
-  // T7.2 Parte B, todavia pendiente.
+  // Aqui sigue devolviendo false (tratado como "sin pulso"): quien decide
+  // si hay que preguntar antes de asumir el paro es la FSM, usando
+  // ppgSensorFallo() para distinguir el caso (T7.2 Parte B).
   if (isnan(valor)) {
     logMsg(LOG_ERROR, "PPG", "Lectura invalida: el sensor no responde");
     return false;
@@ -57,4 +57,8 @@ bool ppgHayPulso() {
   }
 
   return hayPulso;
+}
+
+bool ppgSensorFallo() {
+  return isnan(ppgLeerValor());
 }
