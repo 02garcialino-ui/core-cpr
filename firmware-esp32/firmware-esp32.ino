@@ -1,11 +1,14 @@
 // =====================================================
 //  Core CPR - Firmware principal (ESP32)
-//  Estado: Fase 7 - T7.2 Parte B (confirmacion de fallo del PPG antes
-//  de comprimir: pantalla de confirmacion + fail-safe de 10s. El toque
-//  real de los botones queda sin probar en Wokwi, ver hmi_pantalla.h)
-//  El motor corre un ciclo de compresion continuo en paralelo al resto
-//  del programa; todavia no esta conectado a la FSM (eso viene en
-//  fases posteriores de integracion, Fase 8).
+//  Estado: Fase 8 - T8.1 (el motor ya esta conectado a la FSM: arranca
+//  al entrar a FSM_COMPRIMIENDO y, al salir, retrae el piston desde la
+//  posicion actual en vez de terminar la bajada completa. Ver
+//  motorCicloIniciar/Actualizar/Detener en actuador_motor.h)
+//  T7.3 (buzzer: alarmas acusticas segun prioridad -- limite excedido >
+//  fallo de sensor > paciente vivo. Ver buzzer.h)
+//  T7.2 Parte B: confirmacion de fallo del PPG antes de comprimir
+//  (pantalla de confirmacion + fail-safe de 10s). El toque real de los
+//  botones queda sin probar en Wokwi, ver hmi_pantalla.h
 // =====================================================
 
 #include "config.h"
@@ -20,6 +23,7 @@
 #include "seguridad.h"
 #include "hmi_pantalla.h"
 #include "simulador_falla.h"
+#include "buzzer.h"
 
 // Guardamos el estado anterior para avisar SOLO cuando cambia.
 // Si no, la consola se llena de mensajes repetidos y no se ve nada.
@@ -63,6 +67,7 @@ void setup() {
   profundidadIniciar();
   motorIniciar();
   seguridadIniciar();
+  buzzerIniciar();
   fsmIniciar();
   logMsg(LOG_INFO, "MAIN", "Gira los potenciometros o ajusta el HX711 para simular");
 
@@ -74,28 +79,33 @@ void setup() {
     logMsg(LOG_ERROR, "MAIN", "Homing fallo: revisar el switch de home antes de continuar");
   }
 
-  // ---- Prueba T5.3: ciclo de compresion continuo (110 CPM, 5cm, suave) ----
-  // Reemplaza la prueba puntual de T5.1 (ya validada). Esta corre sin
-  // parar, en paralelo al resto del programa (ver motorPruebaCicloActualizar
-  // en loop()). Independiente de la FSM (Fase 8 la conecta de verdad).
-  logMsg(LOG_INFO, "MAIN", "Prueba T5.3: ciclo de compresion continuo a " +
-                           String(RITMO_CPM_OBJETIVO) + " CPM");
-  motorPruebaCicloIniciar();
+  logMsg(LOG_INFO, "MAIN", "Ciclo de compresion configurado a " +
+                           String(RITMO_CPM_OBJETIVO) +
+                           " CPM (arranca cuando la FSM entra a COMPRIMIENDO)");
 }
 
 void loop() {
   // El paro de emergencia se revisa PRIMERO y en cada vuelta (no espera al
   // bloque de 500ms): si esta activo, corta el motor de inmediato y no
-  // deja que la prueba de ciclo avance ni un paso mas.
+  // deja que el ciclo avance ni un paso mas. Igual con el aborto por
+  // limite (T7.2 Parte A). Estos dos casos cortan siempre en el
+  // instante, a proposito -- no usan la retraccion suave de
+  // motorCicloDetener() (ver T8.1).
   bool paroActivo = paroEmergenciaActivo();
   if (paroActivo || abortoPorLimite) {
     motorHabilitar(false);
-  } else {
+  } else if (motorCicloEnMovimiento()) {
     // Avanza el motor si ya toca el proximo paso (no bloquea). Corre
     // siempre, sin importar el modo, para no cortar un movimiento a
-    // mitad de camino.
-    motorPruebaCicloActualizar();
+    // mitad de camino. Sigue llamandose aunque la FSM ya haya salido de
+    // COMPRIMIENDO, hasta que termine de retraerse.
+    motorCicloActualizar();
   }
+
+  // Igual que el motor: se actualiza en CADA vuelta de loop() (no cada
+  // 500ms), para que los pitidos rapidos de BUZZER_FALLO se escuchen
+  // bien y no queden "aplastados" por el chequeo lento de sensores.
+  buzzerActualizar();
 
   // Se revisa en cada vuelta de loop() (no cada 500ms) para que el
   // antirebote de botonReintentarPresionado() tenga lecturas frecuentes.
@@ -154,6 +164,14 @@ void loop() {
 
   if (primerEstado || estadoActual != estadoAnterior) {
     hmiMostrarEstado(estadoActual);
+
+    // ---- Motor conectado a la FSM (T8.1) ----
+    if (estadoActual == FSM_COMPRIMIENDO) {
+      motorCicloIniciar();
+    } else if (estadoAnterior == FSM_COMPRIMIENDO) {
+      motorCicloDetener();
+    }
+
     estadoAnterior = estadoActual;
     primerEstado = false;
   }
@@ -190,6 +208,20 @@ void loop() {
     }
     habiaAbortoPorLimite = abortoPorLimite;
   }
+
+  // ---- Alarmas acusticas (T7.3) ----
+  // Prioridad: limite excedido > fallo de sensor (esperando confirmacion)
+  // > paciente vivo (solo confirma, no es una alarma real). Si ninguna
+  // aplica, el buzzer queda en silencio.
+  PatronBuzzer patronBuzzer = BUZZER_NINGUNO;
+  if (abortoPorLimite) {
+    patronBuzzer = BUZZER_LIMITE;
+  } else if (estadoActual == FSM_CONFIRMANDO_FALLO) {
+    patronBuzzer = BUZZER_FALLO;
+  } else if (estadoActual == FSM_MONITOREANDO) {
+    patronBuzzer = BUZZER_VIVO;
+  }
+  buzzerFijarPatron(patronBuzzer);
 
   // ---- Cruce de posicion (T5.4 / Punto E) ----
   // Compara lo que el motor "cree" (conteo de pasos desde el home) contra

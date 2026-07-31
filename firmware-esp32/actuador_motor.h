@@ -46,10 +46,30 @@ bool motorActualizarTramo();
 // cruce con el sensor de profundidad real (VL53L0X, T5.4).
 float motorPosicionCm();
 
-// ---- Prueba T5.3: ciclo de compresion continuo (bajar/subir en bucle) ----
-// Demuestra el movimiento suave a RITMO_CPM_OBJETIVO. Independiente de la
-// FSM (Fase 8 la conecta a la decision real de "paciente en paro").
-void motorPruebaCicloIniciar();
-void motorPruebaCicloActualizar();
+// ---- Ciclo de compresion (T5.3, conectado a la FSM en T8.1) ----
+// Movimiento suave a RITMO_CPM_OBJETIVO, alternando bajada/subida (recoil).
+
+// Arranca el ciclo desde cero (bajando). Llamar cuando la FSM entra a
+// FSM_COMPRIMIENDO.
+void motorCicloIniciar();
+
+// Avanza el ciclo un paso, si ya corresponde. Llamar en cada vuelta de
+// loop() mientras motorCicloEnMovimiento() sea true.
+void motorCicloActualizar();
+
+// Pide detener el ciclo. Si el piston va bajando, corta ese tramo y arma
+// uno nuevo de subida DESDE LA POSICION ACTUAL (no desde el fondo), al
+// mismo ritmo que una subida normal -- nunca sigue empujando ni queda
+// trabado contra el pecho. Si ya iba subiendo (recoil), lo deja terminar
+// ese tramo. Llamar cuando la FSM sale de FSM_COMPRIMIENDO (paciente
+// revivio). No se usa para el paro de emergencia ni el aborto por
+// limite (T7.1/T7.2): esos cortan con motorHabilitar(false) al instante,
+// a proposito.
+void motorCicloDetener();
+
+// true mientras el ciclo tiene algo pendiente (comprimiendo o
+// terminando de retraerse tras motorCicloDetener()). false = motor
+// quieto, no hace falta llamar mas a motorCicloActualizar().
+bool motorCicloEnMovimiento();
 
 #endif

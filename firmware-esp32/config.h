@@ -206,6 +206,23 @@
 // Ver simulador_falla.h. Ultimo pin libre con pull-up disponible.
 #define PIN_SIM_FALLA_SENSORES  22
 
+// ---- Buzzer: alarmas acusticas (T7.3) ----
+// GPIO 0 es el unico pin libre hoy para la simulacion en Wokwi (ver
+// memoria de presupuesto de pines). OJO, PROVISIONAL: en T9.4 (hardware
+// real) se reasigna a GPIO 22, que se libera solo al sacar el switch de
+// prueba PIN_SIM_FALLA_SENSORES (ese pin es solo para simulacion, no
+// existe en el circuito real).
+#define PIN_BUZZER  0
+
+// Patron "vivo": un pitido corto, una sola vez al confirmar que el
+// paciente esta bien (no se repite mientras se mantenga el estado).
+#define BUZZER_VIVO_DURACION_MS  200
+
+// Patron "fallo": pitidos cortos y rapidos, repetidos, mientras se
+// espera confirmacion en pantalla (T7.2 Parte B). El intervalo define
+// cuanto dura cada pitido (prendido y apagado usan el mismo valor).
+#define BUZZER_FALLO_INTERVALO_MS  150
+
 // ---- Pantalla Nextion (T6.1) ----
 // Puerto serial aparte (Serial2), separado de los pines ya usados por el
 // HX711 y el motor. La pantalla NO elige el modo (eso lo hace el switch

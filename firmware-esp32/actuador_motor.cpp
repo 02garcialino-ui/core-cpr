@@ -14,9 +14,12 @@ static bool g_sentidoAdelanteTramo = true;
 // ---- Posicion contada desde el home (T5.4) ----
 static long g_posicionPasos = 0;
 
-// ---- Estado de la prueba de ciclo continuo (T5.3) ----
-enum EstadoCicloPrueba { CICLO_BAJANDO, CICLO_SUBIENDO };
-static EstadoCicloPrueba g_estadoCiclo = CICLO_BAJANDO;
+// ---- Estado del ciclo de compresion (T5.3, conectado a la FSM en T8.1) ----
+// CICLO_DETENIENDOSE: se pidio parar (motorCicloDetener()) y el tramo de
+// retraccion (o la ultima subida en curso) todavia no termino.
+// CICLO_DETENIDO: motor quieto, no hay nada pendiente.
+enum EstadoCiclo { CICLO_BAJANDO, CICLO_SUBIENDO, CICLO_DETENIENDOSE, CICLO_DETENIDO };
+static EstadoCiclo g_estadoCiclo = CICLO_DETENIDO;
 
 // ---- Log de motorHabilitar() (solo cuando cambia, ver mas abajo) ----
 static bool g_habilitadoAnterior = false;
@@ -144,25 +147,80 @@ bool motorActualizarTramo() {
   return true;
 }
 
-void motorPruebaCicloIniciar() {
+void motorCicloIniciar() {
   g_estadoCiclo = CICLO_BAJANDO;
   motorIniciarTramo(PASOS_COMPRESION, DURACION_BAJADA_MS);
-  logMsg(LOG_INFO, "MOTOR", "Prueba T5.3: ciclo de compresion iniciado (bajando)");
+  logMsg(LOG_INFO, "MOTOR", "Ciclo de compresion iniciado (bajando)");
 }
 
-void motorPruebaCicloActualizar() {
+void motorCicloActualizar() {
   bool enMovimiento = motorActualizarTramo();
   if (enMovimiento) return;
 
-  if (g_estadoCiclo == CICLO_BAJANDO) {
-    g_estadoCiclo = CICLO_SUBIENDO;
-    motorIniciarTramo(-PASOS_COMPRESION, DURACION_SUBIDA_MS);
-    logMsg(LOG_DEBUG, "MOTOR", "Compresion completa (5cm), subiendo (recoil)");
-  } else {
-    g_estadoCiclo = CICLO_BAJANDO;
-    motorIniciarTramo(PASOS_COMPRESION, DURACION_BAJADA_MS);
-    logMsg(LOG_DEBUG, "MOTOR", "Recoil completo, bajando (siguiente compresion)");
+  switch (g_estadoCiclo) {
+    case CICLO_BAJANDO:
+      g_estadoCiclo = CICLO_SUBIENDO;
+      motorIniciarTramo(-PASOS_COMPRESION, DURACION_SUBIDA_MS);
+      logMsg(LOG_DEBUG, "MOTOR", "Compresion completa (5cm), subiendo (recoil)");
+      break;
+
+    case CICLO_SUBIENDO:
+      g_estadoCiclo = CICLO_BAJANDO;
+      motorIniciarTramo(PASOS_COMPRESION, DURACION_BAJADA_MS);
+      logMsg(LOG_DEBUG, "MOTOR", "Recoil completo, bajando (siguiente compresion)");
+      break;
+
+    case CICLO_DETENIENDOSE:
+      // El tramo de retraccion (o la ultima subida en curso cuando se
+      // pidio detener) ya termino: el motor queda quieto.
+      g_estadoCiclo = CICLO_DETENIDO;
+      logMsg(LOG_INFO, "MOTOR", "Ciclo detenido, piston arriba");
+      break;
+
+    case CICLO_DETENIDO:
+      break;   // no deberia llamarse mas (ver motorCicloEnMovimiento())
   }
+}
+
+void motorCicloDetener() {
+  if (g_estadoCiclo == CICLO_SUBIENDO) {
+    // Ya viene de vuelta hacia arriba: se deja terminar ese tramo, no
+    // hace falta reprogramar nada.
+    g_estadoCiclo = CICLO_DETENIENDOSE;
+    return;
+  }
+
+  if (g_estadoCiclo != CICLO_BAJANDO) {
+    // Ya estaba detenido (o deteniendose): no hay nada que hacer.
+    return;
+  }
+
+  // CICLO_BAJANDO: se corta el tramo en curso y se arma uno nuevo de
+  // subida DESDE LA POSICION ACTUAL (no desde el fondo), para no seguir
+  // empujando ni dejar el piston trabado contra el pecho.
+  long pasosActuales = g_posicionPasos;
+  if (pasosActuales <= 0) {
+    // Practicamente arriba ya: no hace falta retraer nada.
+    motorHabilitar(false);
+    g_estadoCiclo = CICLO_DETENIDO;
+    logMsg(LOG_INFO, "MOTOR", "Ciclo detenido (ya estaba arriba)");
+    return;
+  }
+
+  // Mismo ritmo (ms por paso) que una subida normal, proporcional a lo
+  // que falta recorrer.
+  unsigned long duracionRetraccionMs =
+      (unsigned long)((float)DURACION_SUBIDA_MS * pasosActuales / PASOS_COMPRESION);
+  if (duracionRetraccionMs < 1) duracionRetraccionMs = 1;
+
+  motorIniciarTramo(-pasosActuales, duracionRetraccionMs);
+  g_estadoCiclo = CICLO_DETENIENDOSE;
+  logMsg(LOG_INFO, "MOTOR", "Deteniendo compresion: retrayendo desde " +
+                            String(motorPosicionCm(), 1) + "cm");
+}
+
+bool motorCicloEnMovimiento() {
+  return g_estadoCiclo != CICLO_DETENIDO;
 }
 
 float motorPosicionCm() {

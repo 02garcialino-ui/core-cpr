@@ -25,7 +25,8 @@
     { "type": "wokwi-pushbutton", "id": "switch_home", "top": -80, "left": 1500, "attrs": { "color": "red" } },
     { "type": "wokwi-slide-switch", "id": "sw_paro_emergencia", "top": -80, "left": 1660, "attrs": {} },
     { "type": "wokwi-pushbutton", "id": "boton_reintentar", "top": -80, "left": 1820, "attrs": { "color": "green" } },
-    { "type": "wokwi-slide-switch", "id": "sw_sim_falla", "top": -80, "left": 1980, "attrs": {} }
+    { "type": "wokwi-slide-switch", "id": "sw_sim_falla", "top": -80, "left": 1980, "attrs": {} },
+    { "type": "wokwi-buzzer", "id": "buzzer1", "top": -80, "left": 2140, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
@@ -86,7 +87,10 @@
     [ "boton_reintentar:2.l", "esp:GND.2", "black", [ "v0" ] ],
 
     [ "sw_sim_falla:2", "esp:22", "green", [ "v0" ] ],
-    [ "sw_sim_falla:1", "esp:GND.2", "black", [ "v0" ] ]
+    [ "sw_sim_falla:1", "esp:GND.2", "black", [ "v0" ] ],
+
+    [ "buzzer1:1", "esp:0", "green", [ "v0" ] ],
+    [ "buzzer1:2", "esp:GND.2", "black", [ "v0" ] ]
   ],
   "dependencies": {}
 }
