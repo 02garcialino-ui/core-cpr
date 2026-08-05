@@ -40,5 +40,7 @@ Cuando una tarea se logre, **pide permiso** y márcala:
 | `docs/PLAN-PROYECTO.md` | Fases, tareas y estado (dónde quedamos) |
 | `docs/COMO-TRABAJAMOS.md` | Las 11 reglas de interacción |
 | `docs/CONVENCIONES-CODIGO.md` | Arquitectura y estilo del firmware |
+| `docs/DISENO-MECANICO.md` | Plano arquitectónico de la estructura mecánica (arco tipo LUCAS) |
+| `docs/DISENO-ELECTRICO.md` | Plano de conexiones, alimentación y pines de cada sensor/actuador |
 | `docs/BOM-lista-materiales.md` | Lista de materiales |
 | `README.md` | Resumen del proyecto |

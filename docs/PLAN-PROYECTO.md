@@ -76,7 +76,7 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 - [x] **T1.2** — Primer "hola mundo": hacer parpadear un LED con la ESP32 (en Wokwi) 🤝
 - [x] **T1.3** — Entender la consola serial (ver mensajes de texto) 🤝
 - [x] **T1.4** — Crear el archivo `config.h` y el módulo `logger` (base de todo) 🤖
-- [~] **T1.5** — (Cuando llegue) instalar el entorno para la ESP32 real 🧑 · _En stand-by: espera a que llegue la placa física. No bloquea el avance a Fase 2 (100% simulación)._
+- [x] **T1.5** — (Cuando llegue) instalar el entorno para la ESP32 real 🧑 · _Lograda: Arduino IDE 1.8.19 con el paquete "ESP32 Arduino" instalado, placa "ESP32 Dev Module" seleccionada. Confirmado subiendo el sketch `Blink` por USB (COM8): el LED de la placa parpadea._
 
 ## FASE 2 — Sensores por separado (simulación primero)
 
@@ -152,10 +152,10 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 
 | Subsistema | Logrado en simulación | Validado en hardware |
 |---|---|---|
-| ECG (AD8232 + ADS1115) | ⬜ | ⬜ |
-| PPG (MAX30102) | ⬜ | ⬜ |
+| ECG (AD8232 + ADS1115) | ✅ | ✅ |
+| PPG (MAX30102) | ✅ | ⬜ |
 | Fuerza (HX711) | ⬜ | ⬜ |
-| Profundidad (VL53L0X) | ⬜ | ⬜ |
+| Profundidad (VL53L0X) | ✅ | ⬜ |
 | Simulador ECG (Arduino) | ⬜ | ⬜ |
 | Motor (NEMA 23 + HBS57) | ⬜ | ⬜ |
 | Pantalla (Nextion) | ⬜ | ⬜ |
@@ -172,3 +172,39 @@ En la prueba se combinan dos controles: un **Arduino** genera una señal de ECG 
 |---|---|---|
 | T3.4 | Wokwi (editor web) no soporta programar dos placas distintas en un mismo proyecto | Probar con el Arduino y la ESP32 físicos cuando lleguen los componentes (ver T9.4) |
 | T5.5 | El motor todavía no está conectado a los límites de fuerza/profundidad (falta la lógica de "abortar") | Se retoma en T7.2 (Seguridad), cuando se programe la reacción real ante límites excedidos |
+
+---
+
+## 📝 Notas técnicas pendientes (no bloquean el avance)
+
+| Nota | Detalle | Dónde corregirlo |
+|---|---|---|
+| Lectura duplicada del ECG | `ecgHaySenal()` vuelve a leer el ADS1115 por su cuenta en vez de reusar un valor ya leído. Se llama por separado en 3 lugares (`firmware-esp32.ino:242,244`, `logica_fsm.cpp:31`, `logica_fsm.cpp:60`), generando hasta 3 lecturas I2C independientes por vuelta del `loop()` en vez de 1. No rompe nada hoy (el ECG no decide en la FSM), pero desperdicia tiempo I2C. | Requiere pasar el valor leído desde `firmware-esp32.ino` hasta `fsmActualizar()` (cambia `logica_fsm.h`/`.cpp` también, no solo `sensor_ecg.*`). Revisar cuando se retome la Fase 4/8 con más margen, no antes de T9.4. |
+
+---
+
+## ✅ Resuelto — bloqueo en prueba de hardware ECG + Pantalla
+
+> Sesión del 2026-08-01, resuelto el 2026-08-05. `pruebas-hardware/ecg-pantalla/` — prueba aislada de AD8232+ADS1115 (ECG), VL53L0X (láser) y pantalla Nextion, como adelanto de T9.4.
+
+- **Síntoma original:** ni el ADS1115 ni el VL53L0X se detectaban en el bus I2C ("no se encontraron dispositivos" en el Monitor Serie).
+- **Causa real:** no era el código ni los pines — era la **protoboard** (contactos flojos/poco confiables). Se confirmó con un sketch nuevo (`pruebas-hardware/escaner-i2c/`) probando cada sensor **directo con jumpers, sin protoboard**: ADS1115, MAX30102 y VL53L0X aparecieron los tres, cada uno en su dirección esperada (`0x48`, `0x57`, `0x29`).
+- **Validación adicional:** con otro sketch (`pruebas-hardware/lector-ecg/`) se confirmó además que el AD8232 entrega señal real a través del ADS1115 (la lectura en mV reacciona al tocar los electrodos) — el camino completo ECG (AD8232 → ADS1115 → ESP32) queda validado en hardware real.
+- **Pendiente aparte (no bloquea):** la pantalla Nextion todavía no se probó en hardware real, y el sketch combinado original `ecg-pantalla/` no se volvió a correr con el cableado corregido (directo, sin protoboard) — queda para cuando se retome esa prueba puntual.
+- **Lección para el resto del cableado:** evitar esa protoboard para conexiones I2C; preferir jumpers directos o soldado, al menos hasta el montaje definitivo (Fase 9).
+
+---
+
+## 🔧 Pendiente — probar PPG (MAX30102) y láser (VL53L0X) reales
+
+> Sesión del 2026-08-05. Con el bloqueo de I2C ya resuelto (bloque de arriba) y el código real de `sensor_ppg.cpp`/`sensor_profundidad.cpp` ya escrito (usa las librerías SparkFun MAX3010x y Adafruit VL53L0X), faltaba probarlo en hardware. Se armaron `pruebas-hardware/lector-ppg/` y `pruebas-hardware/lector-laser/` (mismo patrón que `lector-ecg/`, con versión `.ino` y PlatformIO).
+
+- **También en esta sesión:** se pasó `firmware-esp32/` a estructura PlatformIO (código movido a `firmware-esp32/src/`, nuevo `platformio.ini` con las 2 librerías declaradas). El flujo de Wokwi (copiar/pegar archivos en wokwi.com) sigue funcionando igual — no se vio afectado.
+- **Síntoma:** `lector-ppg` no detecta el MAX30102 (`"MAX30102 no responde"`), incluso probando I2C a velocidad estándar (100kHz) en vez de rápida (400kHz) — no fue eso. El escáner sí lo había detectado antes (`0x57`), en la prueba del amigo de Lino con otro cableado.
+- **Sin confirmar todavía:**
+  - Si el escáner I2C (`pruebas-hardware/escaner-i2c/`) detecta `0x57` con el cableado ACTUAL de Lino, tal cual está ahora, sin moverlo.
+  - Si hay algo más conectado al bus además del MAX30102 en este momento.
+  - Si el cableado es el mismo que usó el amigo cuando funcionó, o se armó de nuevo.
+- **Próximo paso sugerido:** correr el escáner con el cableado actual primero (sin tocar nada) para saber si es cableado flojo (mismo patrón que el ADS1115 con la protoboard) o algo más específico de la librería/chip.
+- **VL53L0X (láser):** `lector-laser` todavía no se probó esta sesión (se iba a hacer después del PPG). El escáner ya lo había detectado (`0x29`) en otra prueba; falta correr la lectura real.
+- **Estado:** en pausa — Lino reporta en la próxima sesión.
